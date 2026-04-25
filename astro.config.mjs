@@ -6,7 +6,7 @@ import AutoImport from "astro-auto-import";
 
 // https://astro.build/config
 export default defineConfig({
-  site: "https://lakshmanshankar.github.io",
+  site: "https://lakshmanshankar.github.io/custom-cms-demo",
   integrations: [
     AutoImport({
       imports: [
