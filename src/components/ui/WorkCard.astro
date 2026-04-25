@@ -4,14 +4,15 @@ import ArrowIcon from "@/components/ui/ArrowIcon.astro";
 interface Props {
     title: string;
     description: string;
-    date: string;
-    endDate: string;
-    role: string;
+    date?: string;
+    endDate?: string;
+    role?: string;
     url: string;
     showArrow?: boolean;
 }
 
 const { title, description, date, url, endDate, role, showArrow = true } = Astro.props;
+const dateLabel = [date, endDate].filter(Boolean).join(" - ");
 ---
 
 <a
@@ -25,13 +26,17 @@ const { title, description, date, url, endDate, role, showArrow = true } = Astro
                     <span class="text-black dark:text-white font-semibold">
                         {title}
                     </span>
-                    <span class="text-amber-500">•</span>
-                    <span class="gradient-text">{role}</span>
+                    {
+                        role && (
+                            <>
+                                <span class="text-amber-500">•</span>
+                                <span class="gradient-text">{role}</span>
+                            </>
+                        )
+                    }
                 </span>
 
-                <span>
-                    {date} - {endDate}
-                </span>
+                {dateLabel && <span>{dateLabel}</span>}
             </h4>
             {showArrow && <ArrowIcon class="mt-2 hidden md:block" />}
         </div>

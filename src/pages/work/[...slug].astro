@@ -22,32 +22,44 @@ if (!entry) {
     });
 }
 const { Content } = await render(entry);
+const title = entry.data.company || entry.data.title || entry.id;
+const role = entry.data.role;
+const description = entry.data.description;
+const dateLabel = [entry.data.dateStart, entry.data.dateEnd].filter(Boolean).join(" - ");
+const techList = entry.data.tech
+    ?.split(",")
+    .map((tech) => tech.trim())
+    .filter(Boolean);
 ---
 
-<Layout title={entry.data.company} description={`My ${entry.data.role} at ${entry.data.company}`}>
+<Layout title={title} description={description}>
     <div class="flex flex-col md:flex-row justify-between md:items-center py-4">
         <div>
-            <h2 class="mt-0 md:mt-2">{entry.data.company}</h2>
-            <h3 class="mt-0 md:mt-2">{entry.data.role}</h3>
+            <h2 class="mt-0 md:mt-2">{title}</h2>
+            {role && <h3 class="mt-0 md:mt-2">{role}</h3>}
         </div>
 
-        <div class="flex tex-sm md:flex-row h-fit gap-2">
-            <h4 class="m-0 h-fit text-sm text-muted-background">{entry.data.dateStart}</h4>
-            <h4 class="m-0 h-fit text-sm text-muted-background hidden md:block">-</h4>
-            <h4 class="m-0 h-fit text-sm text-muted-background">{entry.data.dateEnd}</h4>
-        </div>
+        {
+            dateLabel && (
+                <div class="flex tex-sm md:flex-row h-fit gap-2">
+                    <h4 class="m-0 h-fit text-sm text-muted-background">{dateLabel}</h4>
+                </div>
+            )
+        }
     </div>
-    <p class="mt-2">{entry.data.description}</p>
-    <span>
-        Tech Stack:
-        <div class="flex flex-wrap">
-            {
-                entry.data.tech
-                    ?.split(",")
-                    ?.map((tech) => <span class="tag-btn muted-background">{tech}</span>)
-            }
-        </div>
-    </span>
-    <br />
+    <p class="mt-2">{description}</p>
+    {
+        techList && techList.length > 0 && (
+            <>
+                <span>
+                    Tech Stack:
+                    <div class="flex flex-wrap">
+                        {techList.map((tech) => <span class="tag-btn muted-background">{tech}</span>)}
+                    </div>
+                </span>
+                <br />
+            </>
+        )
+    }
     <Content />
 </Layout>

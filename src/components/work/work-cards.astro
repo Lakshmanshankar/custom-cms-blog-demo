@@ -24,9 +24,13 @@ const renderWorks = obeyCount ? newWorks : works;
     {
         renderWorks.map((work) => (
             <WorkCard
-                title={work.data.company}
+                title={work.data.company || work.data.title || work.id}
                 description={work.data.description}
-                date={work.data.dateStart}
+                date={work.data.dateStart || work.data.date?.toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                })}
                 url={`/work/${work.id}`}
                 endDate={work.data.dateEnd}
                 role={work.data.role}

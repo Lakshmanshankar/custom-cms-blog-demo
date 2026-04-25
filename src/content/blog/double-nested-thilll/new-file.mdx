@@ -1,21 +1,21 @@
 ---
-title: "Kafka streams"
-slug: "/kafka-streams"
-description: "Nov 21, 2025 • 5 min read The Challenge of Real Time Data Simplifying Real Time Analytics with Kafka Streams In modern software development, waiting for nightly"
-date: "2026-04-25T12:48:54.574Z"
+title: "New File"
+slug: "/double-nested-thilll/new-file"
+description: "Simplifying Real Time Analytics with Kafka Streams Nov 21, 2025 • 5 min read The Challenge of Real Time Data In modern software development, waiting for nightly"
+date: "2026-04-25T12:48:55.506Z"
 ---
+
+# Simplifying Real-Time Analytics with Kafka Streams
 
 Nov 21, 2025 • 5 min read
 
-### The Challenge of Real-Time Data
-
-# Simplifying Real-Time Analytics with Kafka Streams
+<h3 class="text-left indent-0">The Challenge of Real-Time Data</h3>
 
 In modern software development, waiting for nightly batch jobs to process data is often too slow. Whether you are building a fraud detection system, a live dashboard, or a recommendation engine, you need to process data as it arrives.
 
 For many developers, moving from traditional "Request-Response" architectures to "Event-Driven" systems feels daunting. You might worry about managing complex clusters, handling state, or ensuring fault tolerance.
 
-### The Solution: Kafka Streams
+### **The Solution: Kafka Streams**
 
 Kafka Streams is a client library for building applications and microservices where the input and output data are stored in Kafka clusters. Unlike other stream processing frameworks (like Apache Flink or Spark), it is a **library**, not a cluster. This means you don't need to manage a separate processing cluster; you just run your application like any other Java or Kotlin service.
 
@@ -44,11 +44,11 @@ In the background, Kafka Streams handles the **State Store** for you. If your ap
 
 <Code format="start" lang="js" value={"<Input\n        ref={renameInputRef}\n        variant=\"inline\"\n        value={renameValue}\n        onChange={(e) => onRenameValueChange(e.target.value)}\n        onBlur={() => void onRenameSubmit()}\n        onKeyDown={(e) => {\n          if (e.key === \"Enter\") void onRenameSubmit();\n          if (e.key === \"Escape\") onRenameCancel();\n        }}\n        onMouseDown={(e) => e.stopPropagation()}\n        onClick={(e) => e.stopPropagation()}\n        placeholder=\"Name\"\n        aria-label=\"Rename\"\n        className=\"flex-1 min-w-0\"\n      />"} />
 
-### Why use it?
-
 - **No separate cluster:** It runs as part of your application.
 - **Scalability:** It leverages Kafka's consumer groups to parallelize processing.
 - **Exactly-once processing:** It guarantees that each record is processed once and only once, even if there are failures.
+
+### Why use it?
 
 ### Note:
 

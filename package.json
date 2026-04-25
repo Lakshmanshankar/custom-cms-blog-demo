@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev --port 3000",
+    "prebuild": "node ./src/scripts/sync-content.ts",
     "sync:content": "node ./src/scripts/sync-content.ts",
     "build": "astro build",
     "preview": "astro preview",

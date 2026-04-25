@@ -22,12 +22,15 @@ const projectSchema = z.object({
 });
 
 const workSchema = z.object({
-  company: z.string(),
-  role: z.string(),
-  dateStart: z.string(),
-  tech: z.string(),
+  title: z.string().optional(),
+  slug: z.string().optional(),
+  date: z.coerce.date().optional(),
+  company: z.string().optional(),
+  role: z.string().optional(),
+  dateStart: z.string().optional(),
+  tech: z.string().optional(),
   description: z.string(),
-  dateEnd: z.string(),
+  dateEnd: z.string().optional(),
   draft: z.boolean().optional(),
 });
 
