@@ -1,4 +1,6 @@
 ---
+import { SITE_BASE_PATH } from "@/consts";
+
 interface Props {
     title: string;
     description: string;
@@ -6,6 +8,7 @@ interface Props {
 }
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const baseUrl = `${SITE_BASE_PATH}/`;
 const { title, description, image = "/nano.png" } = Astro.props;
 ---
 
@@ -26,7 +29,7 @@ const { title, description, image = "/nano.png" } = Astro.props;
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />
 <meta property="og:image" content={new URL(image, Astro.url)} />
-<link rel="sitemap" href="/sitemap.xml" />
+<link rel="sitemap" href={`${baseUrl}sitemap.xml`} />
 
 <meta property="twitter:card" content="summary_large_image" />
 <meta property="twitter:url" content={Astro.url} />

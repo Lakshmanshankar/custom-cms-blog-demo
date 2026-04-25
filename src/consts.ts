@@ -9,6 +9,8 @@ export const SITE: Site = {
   URL: "https://lakshmanshankar.github.io",
 };
 
+export const SITE_BASE_PATH = "/custom-cms-blog-demo";
+
 export const HOME: Metadata = {
   TITLE: "Home",
   DESCRIPTION:

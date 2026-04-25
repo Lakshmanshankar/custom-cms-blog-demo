@@ -1,8 +1,11 @@
 ---
+import { SITE_BASE_PATH } from "@/consts";
 import Layout from "../layouts/Layout.astro";
+
+const baseUrl = `${SITE_BASE_PATH}/`;
 ---
 
 <Layout title={"Page not found"} description={"Page youare looking for is not found"}>
     <h1>Page not found</h1>
-    <a href="/">Home</a>
+    <a href={baseUrl}>Home</a>
 </Layout>
