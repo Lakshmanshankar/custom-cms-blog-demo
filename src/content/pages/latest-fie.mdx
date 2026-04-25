@@ -1,0 +1,704 @@
+---
+title: "Latest fie"
+slug: "/latest-fie"
+description: "DevNote v0.5.0 — Context Bridge Brainstorm Date: 2026 04 19 Status: In discussion — no decisions locked yet Purpose: Share with collaborators the full explorati"
+date: "2026-04-25T03:38:33.448Z"
+---
+
+# DevNote v0.5.0 — Context Bridge Brainstorm
+
+**Date:** 2026-04-19 **Status:** In discussion — no decisions locked yet **Purpose:** Share with collaborators the full exploration of how DevNote could integrate with AI coding assistants (Claude Code, Cursor, Copilot, Codex, etc.)
+
+## 📍 Where we are
+
+**v0.4.2 just shipped.** DevNote now has:
+
+- ✅ Semantic search over all past notes (v0.4.0)
+- ✅ Python worker with `gemini-embedding-001` (3072-dim, L2-normalized)
+- ✅ SQLite local memory (notes + embeddings)
+- ✅ Windows Python detection hardening (v0.4.1)
+- ✅ Threshold recalibration 0.35 → 0.70 for gemini-embedding-001 noise floor (v0.4.2)
+
+The **retrieval layer is done.** v0.5.0 is the question: *how do we get the retrieved notes to the AI tool that's actually coding?*
+
+## 💡 The spark idea
+
+Original user framing:
+
+This turns DevNote into the **memory bridge** between past dev work and the current AI coding session.
+
+Stronger positioning than "DevNote has its own chat" (which competes with Claude Code) — this makes DevNote **infrastructure** that feeds ALL AI tools.
+
+## 🎓 First conceptual unlock — why we still need markdown
+
+**Confusion that came up:** "We've already embedded everything. Why do we need to send markdown to the AI? Why not vectors?"
+
+### The answer
+
+**Embeddings have ONE job: retrieval. Markdown has ONE job: delivery.**
+
+Library analogy:
+
+- Embeddings = the **catalog** that helps you find the right book
+- Markdown = the **actual book** you hand to the reader (the LLM)
+
+### Why LLMs can't read vectors
+
+LLMs tokenize **text**. A 3072-dim float array is meaningless to Claude/Codex — they need words. So the pipeline MUST be:
+
+1. **Retrieval:** query → embed → similarity search → top-k note IDs
+2. **Delivery:** pull markdown of those notes from SQLite → send text to LLM
+
+Nothing from v0.4.0 is wasted. The embedding layer is what makes retrieval efficient (send 5 relevant notes instead of 500). The markdown layer is how content actually reaches the LLM.
+
+### The pipeline for v0.5.0
+
+<Code format="start" lang="javascript" value={"┌─────────────────────────────────────────────┐\n│  User types query → DevNote embeds →        │\n│  semantic search → top 5 notes shown        │  ← v0.4.0 (DONE)\n└─────────────────────────────────────────────┘\n                    ↓\n┌─────────────────────────────────────────────┐\n│  User picks checkboxes on results           │\n│  → \"Add to Context\" button                  │  ← v0.5.0 (THIS)\n└─────────────────────────────────────────────┘\n                    ↓\n┌─────────────────────────────────────────────┐\n│  DevNote pulls markdown of selected notes   │\n│  → delivers to Claude / Codex / Cursor etc. │\n└─────────────────────────────────────────────┘"} />
+
+## 🌉 The 5 delivery mechanisms — how markdown actually reaches the AI tool
+
+Every option transports the **same markdown payload**. They differ in **who initiates**, **whether user is in the loop**, and **which AI tools accept it**.
+
+### Mechanism A — 📋 Clipboard
+
+**What:** DevNote writes markdown to the OS clipboard. User pastes into AI chat.
+
+**Analogy:** Photocopier. You copy pages, walk to the reader, hand them over.
+
+**User flow:**
+
+1. Search in DevNote → select 3 notes → click "Add to Context"
+2. Toast: "Copied 3 notes to clipboard"
+3. User switches to Claude Code / Cursor / Copilot chat panel
+4. User pastes (Ctrl+V) → markdown appears in input
+5. User hits Enter → AI has the context
+
+**Code sketch:**
+
+<Code format="start" lang="ts" value={"const markdown = selectedNotes.map(n =>\n  `## ${n.title}\\n\\n${n.content}\\n`\n).join('\\n---\\n\\n');\nawait vscode.env.clipboard.writeText(markdown);"} />
+
+**Works with:** 🟢 **Every AI tool that accepts pasted text** — universal
+
+**Pros:**
+
+- Simplest possible implementation (~10 lines)
+- Zero tool-specific code
+- User fully in control
+- No permissions, no config, no protocol setup
+
+**Cons:**
+
+- User must manually paste (one extra step)
+- Not "magical"
+- Clipboard can be overwritten if user copies something else
+
+### Mechanism B — 📁 Workspace file drop
+
+**What:** DevNote writes markdown to a file in the workspace (e.g., `.devnote/context.md`). User types `@.devnote/context.md` in AI chat — the AI tool reads the file.
+
+**Analogy:** Post-it on a shared whiteboard. Whoever looks at the whiteboard sees it.
+
+**User flow:**
+
+1. Search → select 3 notes → "Add to Context"
+2. DevNote writes `.devnote/context.md` in workspace (gitignored)
+3. Toast: "Context ready → type `@.devnote/context.md` in your AI chat"
+4. User types `@` in Claude Code / Cursor → file autocomplete → pick it → Enter
+5. AI tool reads the file as context
+
+**Code sketch:**
+
+<Code format="start" lang="ts" value={"const targetDir = path.join(vscode.workspace.rootPath, '.devnote');\nfs.mkdirSync(targetDir, { recursive: true });\nfs.writeFileSync(path.join(targetDir, 'context.md'), markdown);"} />
+
+**Works with:** 🟢 Claude Code, Cursor, Copilot, Windsurf, Continue (all `@file`-aware tools)
+
+**Pros:**
+
+- Works with most modern AI IDE tools
+- User can re-reference same file across multiple turns
+- Zero protocol complexity
+
+**Cons:**
+
+- Pollutes workspace (one file, gitignored, but still)
+- User must remember the `@.devnote/context.md` syntax
+- Need cleanup/stale-file logic
+
+### Mechanism C — 🔌 MCP Server (Model Context Protocol)
+
+**What:** DevNote runs a small MCP server. AI tools connect and call tools like `devnote_search_notes(query)` or `devnote_get_notes(ids)`. **AI decides when to query — not the user.**
+
+**Analogy:** Installing a new department at a company. Other teams (AI tools) can send work requests and get responses.
+
+**User flow:**
+
+1. User adds DevNote MCP server to AI tool config (one-time, ~30s)
+2. User chats normally: *"I need to fix this auth bug"*
+3. AI notices: "I should check DevNote for relevant past work"
+4. AI calls `devnote_search_notes("auth bug")` → DevNote returns top-5 note markdowns
+5. AI uses those as context: *"Based on your note from 2 weeks ago about token refresh..."*
+
+**Biggest philosophical shift:** user doesn't manually search or pick checkboxes. The AI does it autonomously.
+
+**Code sketch:**
+
+<Code format="start" lang="ts" value={"import { Server } from '@modelcontextprotocol/sdk/server';\nconst server = new Server({ name: 'devnote', version: '0.5.0' });\n\nserver.tool('search_notes', {\n  description: 'Search your past dev notes semantically',\n  parameters: { query: { type: 'string' } },\n  handler: async ({ query }) => {\n    const results = await searchService.searchQuery(query);\n    const notes = await memoryStore.getByIds(results.map(r => r.id));\n    return notes.map(n => n.contentMarkdown);\n  },\n});\nserver.listen();"} />
+
+**Works with:** 🟡 Claude Desktop ✅, Claude Code ✅, Cursor (custom MCP), Copilot 🚧. Not Codex/ChatGPT yet.
+
+**Pros:**
+
+- Truly agentic — AI pulls context when it decides it's needed
+- No manual checkboxes, no button clicks — natural conversation
+- Standardized protocol (industry converging on MCP)
+- Future-proof
+
+**Cons:**
+
+- Bigger implementation (~100–200 lines)
+- User config friction (add to AI tool config)
+- Doesn't work with non-MCP tools yet (Codex, some Cursor setups)
+- **Doesn't match the "checkbox + button" UX** — different philosophy
+
+### Mechanism D — 🔗 VS Code Extension API (direct extension-to-extension)
+
+**What:** DevNote calls INTO Claude Code / Copilot / Cursor extension APIs directly via VS Code's extension messaging.
+
+**Analogy:** Hotline phone between two offices.
+
+**User flow:**
+
+1. Search → select 3 notes → "Add to Context → Claude Code" (dropdown picks target)
+2. DevNote calls `vscode.commands.executeCommand('claudeCode.addContext', { content: markdown })`
+3. Target extension receives → adds to chat's context pool
+4. User's next message to AI includes that context automatically
+
+**Code sketch:**
+
+<Code format="start" lang="ts" value={"const copilot = vscode.extensions.getExtension('GitHub.copilot-chat');\nif (copilot) {\n  await vscode.commands.executeCommand(\n    'github.copilot.chat.attachContext',\n    { type: 'text', value: markdown, label: 'DevNote Context' }\n  );\n}"} />
+
+**Works with:** 🟡 Tool-specific. Copilot has a public attach-context API. Claude Code CLI doesn't (separate process). Cursor has less-documented APIs.
+
+**Pros:**
+
+- Most "native feel" — context just appears in AI chat
+- No pasting, no file references, no MCP setup
+
+**Cons:**
+
+- **Requires per-tool integration code (~50–100 lines per AI tool)**
+- AI tool must expose a public API (most don't, fully)
+- Brittle — API changes break it
+- Limited to VS Code (not Claude Desktop, Codex, web-based tools)
+
+### Mechanism E — 🧩 AI Tool Plugin (like context-mode)
+
+**What:** DevNote ships as a **plugin inside the AI tool's own ecosystem** (e.g., Claude Code plugin), NOT a separate VS Code extension.
+
+**Analogy:** Instead of DevNote calling the AI tool from outside, DevNote **moves into** the AI tool's building and becomes a new department.
+
+**How plugins work** (context-mode reference):
+
+**User flow:**
+
+1. User installs "DevNote" plugin from Claude Code plugin marketplace (one click)
+2. User chats normally: *"help me debug this auth issue"*
+3. Claude (with DevNote plugin's skills loaded) auto-calls `devnote.search("auth")`
+4. Plugin queries local SQLite → returns top 3 notes as markdown
+5. Claude uses context and responds
+
+Plus: slash commands like `/devnote-recent` for manual triggering.
+
+**Works with:** 🟡 **One AI tool per build** — need separate plugins for Claude Code, Cursor, Continue, Windsurf, Zed, etc.
+
+**Pros:**
+
+- Best distribution (plugin marketplaces = one-click install)
+- Most native UX
+- Can do **token optimization** via hooks (like context-mode)
+- Works across Claude Code CLI, Desktop, web — not just VS Code
+- Standard of the future AI landscape
+
+**Cons:**
+
+- **Per-AI-tool packaging required** (biggest cost)
+- ~20–30 hours per tool, × multiple tools = big commitment
+- Different UX (agentic, not checkbox-driven)
+- Shared-state problem: plugin needs to read SQLite DB that VS Code extension writes
+
+## 📊 Full comparison table
+
+## 🏗 The bigger question — DevNote's architectural identity
+
+During the brainstorm, a deeper question surfaced:
+
+This reframes the entire decision. DevNote's **core value** is a searchable developer memory. The VS Code extension is just **one UI** for it.
+
+### Three possible architectural futures
+
+#### Future 1 — Extension-centric (current state)
+
+<Code format="start" lang="javascript" value={"┌─────────────────────────────────┐\n│   VS Code Extension             │\n│  ┌───────────────────────────┐  │\n│  │ SQLite + Python worker    │  │\n│  │ Notion + Git + UI         │  │\n│  │ all logic bundled         │  │\n│  └───────────────────────────┘  │\n└─────────────────────────────────┘"} />
+
+- Tied to VS Code entirely
+- If AI tools take over (Claude Code CLI, Cursor, web IDEs) → DevNote stuck
+- Mobile/web access → impossible without full rewrite
+
+**Verdict:** 🔴 Fragile long-term
+
+#### Future 2 — MCP-server addition
+
+<Code format="start" lang="javascript" value={"┌─────────────────────────────────┐      ┌──────────────┐\n│   VS Code Extension             │      │ MCP Server   │\n│  ┌───────────────────────────┐  │ ←──→ │ (sidecar)    │\n│  │ SQLite + Python + Notion  │  │      │ wraps SQLite │\n│  └───────────────────────────┘  │      └──────────────┘\n└─────────────────────────────────┘"} />
+
+- Extension **100% as-is, no refactor**
+- MCP server reads the same SQLite the extension writes
+- Claude Code, Claude Desktop, MCP-Cursor → all connect
+- **Answer to "will the extension be saved?" = YES, untouched**
+
+**Verdict:** 🟡 Better. But still VS-Code-anchored (new notes only generated from VS Code)
+
+#### Future 3 — CLI-first architecture ⭐
+
+<Code format="start" lang="javascript" value={"                ┌──────────────────────┐\n                │  devnote CLI (core)  │\n                │  ─────────────────   │\n                │  SQLite + Python     │\n                │  Notion + Git        │\n                │  all business logic  │\n                └──────────────────────┘\n                    ▲          ▲\n                    │          │\n        ┌───────────┘          └──────────┬──────────────┐\n        │                                 │              │\n   ┌────┴─────────┐               ┌───────┴──────┐  ┌────┴────────┐\n   │ VS Code ext  │               │ MCP Server   │  │ Plugin      │\n   │ (thin UI)    │               │ (wraps CLI)  │  │ (wraps MCP) │\n   │ calls CLI    │               │              │  │             │\n   └──────────────┘               └──────────────┘  └─────────────┘"} />
+
+- **CLI is source of truth.** Everything else wraps it.
+- Extension stays — but becomes a thin UI layer
+- Run `devnote search "auth"` in terminal without any IDE
+- MCP server = 100-line wrapper around CLI commands
+- Plugin = packaging of MCP + skills for distribution
+- Tomorrow's AI tool? Write a new wrapper in a few hours.
+
+**This is the architecture context-mode uses.** One core sandbox, many frontends.
+
+**Verdict:** 🟢🟢 Future-proof. Tool-agnostic.
+
+## 🔄 Refactor cost: "Do we rewrite everything?"
+
+**NO — we refactor, not rewrite.**
+
+~80% of DevNote's code is already tool-agnostic and can move to CLI with minimal changes:
+
+Only ~20% is VS-Code-specific:
+
+**Total refactor:** ~15–20 hours of focused work. Not a rewrite. Most imports just change paths.
+
+## 🛣 Proposed phased roadmap
+
+Don't pick ONE future — pick the **path** that gets to Future 3 gradually, with each step shippable on its own.
+
+### Why this sequence
+
+1. **v0.5.0 ships YOUR idea fast** — validates user demand, delivers something this week
+2. **v0.6.0 does the strategic refactor** — future-proofs DevNote
+3. **v0.7.0 unlocks agentic AI** — AI tools autonomously pull context
+4. **v0.8.0 is distribution** — plugin marketplace = one-click install
+5. **v0.9.0+ is expansion** — each new AI tool = small wrapper, not big rewrite
+
+**Nothing is wasted.** Each release builds on the last. Extension never dies — it evolves into a thin UI layer on top of the CLI core.
+
+## 🎯 The 2026 reality check
+
+Where is the AI tooling landscape likely headed in 12–18 months:
+
+- **MCP** becomes table-stakes across AI tools
+- **Plugin marketplaces** drive distribution (Claude Code plugins, Cursor plugins)
+- **Terminal-first AI workflows** keep growing (`claude`, `gh copilot`, etc.)
+- **Multiple IDEs coexist** — VS Code won't die but won't dominate
+- **AI tools proliferate** — can't predict which is dominant in 2 years
+
+**CLI-first is the only architecture that survives all scenarios.** Extension-centric dies if VS Code loses share. MCP-only works but only for AI-driven contexts. CLI-first works everywhere.
+
+## ❓ Open decisions for collaboration
+
+### Decision 1 — v0.5.0 scope
+
+- **(a)** Checkbox UX + Clipboard + File drop (ship fast, small, validates concept)\
+Yeah, this will work but clipboard paste get ugly really fast. UX poor. I'd prefer much cleaner user input field. \
+File drop is a better alternative. Instead of writing everything to a same context file and load it, Why not create a context folder in the codebase itself which can be git sync'ed. \
+Add context files as like other files. (Simplest ever).
+- **(b)** Skip checkbox UX, go straight to CLI extraction (bigger bet, future-proof sooner)
+   - One more question is do we couple the embeding within cli or cli can just work for md contexts.
+- **(c)** Do BOTH in v0.5.0 (double scope, slower ship)
+
+### Decision 2 — 5-release phased roadmap
+
+Are we comfortable with the v0.5 → v0.9 plan above? Any stages to swap/skip/combine?
+
+### Decision 3 — within v0.5.0 (if chosen)
+
+If we ship checkbox UX in v0.5.0:
+
+- **D15:** Delivery = Clipboard (A) + File drop (B) together, or just one?
+   - See if we can avoid all the next 4 questions with the above approach just storing each context as file and try to load those files right away.
+- **D16:** Default action on "Add to Context" click?
+- **D17:** Selection UX — checkboxes + bottom button, or right-click menu, or multi-select with Shift?
+- **D18:** Markdown format — concatenated with `---` separators? Per-note files in a folder? Include metadata (branch, date) in the bundle?
+
+### Decision 4 — plugin ecosystem scope
+
+Which AI tools to target in v0.8.0+ order of priority?
+
+- Claude Code
+- Cursor
+- Continue.dev
+- Windsurf
+- Zed
+- Claude Desktop (MCP only, no plugin needed)
+
+## 📎 Appendix — terms and references
+
+- **RAG** (Retrieval-Augmented Generation): Pattern where you retrieve relevant context from a knowledge base, then pass it to an LLM as grounding. DevNote v0.4.0 built the retrieval layer.
+- **MCP** (Model Context Protocol): Anthropic's standard protocol for AI tools to interact with external data sources. [modelcontextprotocol.io](https://modelcontextprotocol.io)
+- **Embeddings**: Numerical vector representations of text, used for semantic similarity search. DevNote uses `gemini-embedding-001` (3072-dim, L2-normalized, dot-product similarity).
+- **Context window**: The chunk of text an LLM can "see" in a single call. Efficient retrieval = fit only relevant notes into this window.
+- **context-mode**: Reference plugin for Claude Code that does token-budget management via MCP + hooks. Exemplar of what a DevNote plugin could look like.
+
+**End of brainstorm doc.** Share this with collaborators for feedback before we lock decisions.# DevNote v0.5.0 — Context Bridge Brainstorm
+
+**Date:** 2026-04-19 **Status:** In discussion — no decisions locked yet **Purpose:** Share with collaborators the full exploration of how DevNote could integrate with AI coding assistants (Claude Code, Cursor, Copilot, Codex, etc.)
+
+## 📍 Where we are
+
+**v0.4.2 just shipped.** DevNote now has:
+
+- ✅ Semantic search over all past notes (v0.4.0)
+- ✅ Python worker with `gemini-embedding-001` (3072-dim, L2-normalized)
+- ✅ SQLite local memory (notes + embeddings)
+- ✅ Windows Python detection hardening (v0.4.1)
+- ✅ Threshold recalibration 0.35 → 0.70 for gemini-embedding-001 noise floor (v0.4.2)
+
+The **retrieval layer is done.** v0.5.0 is the question: *how do we get the retrieved notes to the AI tool that's actually coding?*
+
+## 💡 The spark idea
+
+Original user framing:
+
+This turns DevNote into the **memory bridge** between past dev work and the current AI coding session.
+
+Stronger positioning than "DevNote has its own chat" (which competes with Claude Code) — this makes DevNote **infrastructure** that feeds ALL AI tools.
+
+## 🎓 First conceptual unlock — why we still need markdown
+
+**Confusion that came up:** "We've already embedded everything. Why do we need to send markdown to the AI? Why not vectors?"
+
+### The answer
+
+**Embeddings have ONE job: retrieval. Markdown has ONE job: delivery.**
+
+Library analogy:
+
+- Embeddings = the **catalog** that helps you find the right book
+- Markdown = the **actual book** you hand to the reader (the LLM)
+
+### Why LLMs can't read vectors
+
+LLMs tokenize **text**. A 3072-dim float array is meaningless to Claude/Codex — they need words. So the pipeline MUST be:
+
+1. **Retrieval:** query → embed → similarity search → top-k note IDs
+2. **Delivery:** pull markdown of those notes from SQLite → send text to LLM
+
+Nothing from v0.4.0 is wasted. The embedding layer is what makes retrieval efficient (send 5 relevant notes instead of 500). The markdown layer is how content actually reaches the LLM.
+
+### The pipeline for v0.5.0
+
+<Code format="start" lang="javascript" value={"┌─────────────────────────────────────────────┐\n│  User types query → DevNote embeds →        │\n│  semantic search → top 5 notes shown        │  ← v0.4.0 (DONE)\n└─────────────────────────────────────────────┘\n                    ↓\n┌─────────────────────────────────────────────┐\n│  User picks checkboxes on results           │\n│  → \"Add to Context\" button                  │  ← v0.5.0 (THIS)\n└─────────────────────────────────────────────┘\n                    ↓\n┌─────────────────────────────────────────────┐\n│  DevNote pulls markdown of selected notes   │\n│  → delivers to Claude / Codex / Cursor etc. │\n└─────────────────────────────────────────────┘"} />
+
+## 🌉 The 5 delivery mechanisms — how markdown actually reaches the AI tool
+
+Every option transports the **same markdown payload**. They differ in **who initiates**, **whether user is in the loop**, and **which AI tools accept it**.
+
+### Mechanism A — 📋 Clipboard
+
+**What:** DevNote writes markdown to the OS clipboard. User pastes into AI chat.
+
+**Analogy:** Photocopier. You copy pages, walk to the reader, hand them over.
+
+**User flow:**
+
+1. Search in DevNote → select 3 notes → click "Add to Context"
+2. Toast: "Copied 3 notes to clipboard"
+3. User switches to Claude Code / Cursor / Copilot chat panel
+4. User pastes (Ctrl+V) → markdown appears in input
+5. User hits Enter → AI has the context
+
+**Code sketch:**
+
+<Code format="start" lang="ts" value={"const markdown = selectedNotes.map(n =>\n  `## ${n.title}\\n\\n${n.content}\\n`\n).join('\\n---\\n\\n');\nawait vscode.env.clipboard.writeText(markdown);"} />
+
+**Works with:** 🟢 **Every AI tool that accepts pasted text** — universal
+
+**Pros:**
+
+- Simplest possible implementation (~10 lines)
+- Zero tool-specific code
+- User fully in control
+- No permissions, no config, no protocol setup
+
+**Cons:**
+
+- User must manually paste (one extra step)
+- Not "magical"
+- Clipboard can be overwritten if user copies something else
+
+### Mechanism B — 📁 Workspace file drop
+
+**What:** DevNote writes markdown to a file in the workspace (e.g., `.devnote/context.md`). User types `@.devnote/context.md` in AI chat — the AI tool reads the file.
+
+**Analogy:** Post-it on a shared whiteboard. Whoever looks at the whiteboard sees it.
+
+**User flow:**
+
+1. Search → select 3 notes → "Add to Context"
+2. DevNote writes `.devnote/context.md` in workspace (gitignored)
+3. Toast: "Context ready → type `@.devnote/context.md` in your AI chat"
+4. User types `@` in Claude Code / Cursor → file autocomplete → pick it → Enter
+5. AI tool reads the file as context
+
+**Code sketch:**
+
+<Code format="start" lang="ts" value={"const targetDir = path.join(vscode.workspace.rootPath, '.devnote');\nfs.mkdirSync(targetDir, { recursive: true });\nfs.writeFileSync(path.join(targetDir, 'context.md'), markdown);"} />
+
+**Works with:** 🟢 Claude Code, Cursor, Copilot, Windsurf, Continue (all `@file`-aware tools)
+
+**Pros:**
+
+- Works with most modern AI IDE tools
+- User can re-reference same file across multiple turns
+- Zero protocol complexity
+
+**Cons:**
+
+- Pollutes workspace (one file, gitignored, but still)
+- User must remember the `@.devnote/context.md` syntax
+- Need cleanup/stale-file logic
+
+### Mechanism C — 🔌 MCP Server (Model Context Protocol)
+
+**What:** DevNote runs a small MCP server. AI tools connect and call tools like `devnote_search_notes(query)` or `devnote_get_notes(ids)`. **AI decides when to query — not the user.**
+
+**Analogy:** Installing a new department at a company. Other teams (AI tools) can send work requests and get responses.
+
+**User flow:**
+
+1. User adds DevNote MCP server to AI tool config (one-time, ~30s)
+2. User chats normally: *"I need to fix this auth bug"*
+3. AI notices: "I should check DevNote for relevant past work"
+4. AI calls `devnote_search_notes("auth bug")` → DevNote returns top-5 note markdowns
+5. AI uses those as context: *"Based on your note from 2 weeks ago about token refresh..."*
+
+**Biggest philosophical shift:** user doesn't manually search or pick checkboxes. The AI does it autonomously.
+
+**Code sketch:**
+
+<Code format="start" lang="ts" value={"import { Server } from '@modelcontextprotocol/sdk/server';\nconst server = new Server({ name: 'devnote', version: '0.5.0' });\n\nserver.tool('search_notes', {\n  description: 'Search your past dev notes semantically',\n  parameters: { query: { type: 'string' } },\n  handler: async ({ query }) => {\n    const results = await searchService.searchQuery(query);\n    const notes = await memoryStore.getByIds(results.map(r => r.id));\n    return notes.map(n => n.contentMarkdown);\n  },\n});\nserver.listen();"} />
+
+**Works with:** 🟡 Claude Desktop ✅, Claude Code ✅, Cursor (custom MCP), Copilot 🚧. Not Codex/ChatGPT yet.
+
+**Pros:**
+
+- Truly agentic — AI pulls context when it decides it's needed
+- No manual checkboxes, no button clicks — natural conversation
+- Standardized protocol (industry converging on MCP)
+- Future-proof
+
+**Cons:**
+
+- Bigger implementation (~100–200 lines)
+- User config friction (add to AI tool config)
+- Doesn't work with non-MCP tools yet (Codex, some Cursor setups)
+- **Doesn't match the "checkbox + button" UX** — different philosophy
+
+### Mechanism D — 🔗 VS Code Extension API (direct extension-to-extension)
+
+**What:** DevNote calls INTO Claude Code / Copilot / Cursor extension APIs directly via VS Code's extension messaging.
+
+**Analogy:** Hotline phone between two offices.
+
+**User flow:**
+
+1. Search → select 3 notes → "Add to Context → Claude Code" (dropdown picks target)
+2. DevNote calls `vscode.commands.executeCommand('claudeCode.addContext', { content: markdown })`
+3. Target extension receives → adds to chat's context pool
+4. User's next message to AI includes that context automatically
+
+**Code sketch:**
+
+<Code format="start" lang="ts" value={"const copilot = vscode.extensions.getExtension('GitHub.copilot-chat');\nif (copilot) {\n  await vscode.commands.executeCommand(\n    'github.copilot.chat.attachContext',\n    { type: 'text', value: markdown, label: 'DevNote Context' }\n  );\n}"} />
+
+**Works with:** 🟡 Tool-specific. Copilot has a public attach-context API. Claude Code CLI doesn't (separate process). Cursor has less-documented APIs.
+
+**Pros:**
+
+- Most "native feel" — context just appears in AI chat
+- No pasting, no file references, no MCP setup
+
+**Cons:**
+
+- **Requires per-tool integration code (~50–100 lines per AI tool)**
+- AI tool must expose a public API (most don't, fully)
+- Brittle — API changes break it
+- Limited to VS Code (not Claude Desktop, Codex, web-based tools)
+
+### Mechanism E — 🧩 AI Tool Plugin (like context-mode)
+
+**What:** DevNote ships as a **plugin inside the AI tool's own ecosystem** (e.g., Claude Code plugin), NOT a separate VS Code extension.
+
+**Analogy:** Instead of DevNote calling the AI tool from outside, DevNote **moves into** the AI tool's building and becomes a new department.
+
+**How plugins work** (context-mode reference):
+
+**User flow:**
+
+1. User installs "DevNote" plugin from Claude Code plugin marketplace (one click)
+2. User chats normally: *"help me debug this auth issue"*
+3. Claude (with DevNote plugin's skills loaded) auto-calls `devnote.search("auth")`
+4. Plugin queries local SQLite → returns top 3 notes as markdown
+5. Claude uses context and responds
+
+Plus: slash commands like `/devnote-recent` for manual triggering.
+
+**Works with:** 🟡 **One AI tool per build** — need separate plugins for Claude Code, Cursor, Continue, Windsurf, Zed, etc.
+
+**Pros:**
+
+- Best distribution (plugin marketplaces = one-click install)
+- Most native UX
+- Can do **token optimization** via hooks (like context-mode)
+- Works across Claude Code CLI, Desktop, web — not just VS Code
+- Standard of the future AI landscape
+
+**Cons:**
+
+- **Per-AI-tool packaging required** (biggest cost)
+- ~20–30 hours per tool, × multiple tools = big commitment
+- Different UX (agentic, not checkbox-driven)
+- Shared-state problem: plugin needs to read SQLite DB that VS Code extension writes
+
+## 📊 Full comparison table
+
+## 🏗 The bigger question — DevNote's architectural identity
+
+During the brainstorm, a deeper question surfaced:
+
+This reframes the entire decision. DevNote's **core value** is a searchable developer memory. The VS Code extension is just **one UI** for it.
+
+### Three possible architectural futures
+
+#### Future 1 — Extension-centric (current state)
+
+<Code format="start" lang="javascript" value={"┌─────────────────────────────────┐\n│   VS Code Extension             │\n│  ┌───────────────────────────┐  │\n│  │ SQLite + Python worker    │  │\n│  │ Notion + Git + UI         │  │\n│  │ all logic bundled         │  │\n│  └───────────────────────────┘  │\n└─────────────────────────────────┘"} />
+
+- Tied to VS Code entirely
+- If AI tools take over (Claude Code CLI, Cursor, web IDEs) → DevNote stuck
+- Mobile/web access → impossible without full rewrite
+
+**Verdict:** 🔴 Fragile long-term
+
+#### Future 2 — MCP-server addition
+
+<Code format="start" lang="javascript" value={"┌─────────────────────────────────┐      ┌──────────────┐\n│   VS Code Extension             │      │ MCP Server   │\n│  ┌───────────────────────────┐  │ ←──→ │ (sidecar)    │\n│  │ SQLite + Python + Notion  │  │      │ wraps SQLite │\n│  └───────────────────────────┘  │      └──────────────┘\n└─────────────────────────────────┘"} />
+
+- Extension **100% as-is, no refactor**
+- MCP server reads the same SQLite the extension writes
+- Claude Code, Claude Desktop, MCP-Cursor → all connect
+- **Answer to "will the extension be saved?" = YES, untouched**
+
+**Verdict:** 🟡 Better. But still VS-Code-anchored (new notes only generated from VS Code)
+
+#### Future 3 — CLI-first architecture ⭐
+
+<Code format="start" lang="javascript" value={"                ┌──────────────────────┐\n                │  devnote CLI (core)  │\n                │  ─────────────────   │\n                │  SQLite + Python     │\n                │  Notion + Git        │\n                │  all business logic  │\n                └──────────────────────┘\n                    ▲          ▲\n                    │          │\n        ┌───────────┘          └──────────┬──────────────┐\n        │                                 │              │\n   ┌────┴─────────┐               ┌───────┴──────┐  ┌────┴────────┐\n   │ VS Code ext  │               │ MCP Server   │  │ Plugin      │\n   │ (thin UI)    │               │ (wraps CLI)  │  │ (wraps MCP) │\n   │ calls CLI    │               │              │  │             │\n   └──────────────┘               └──────────────┘  └─────────────┘"} />
+
+- **CLI is source of truth.** Everything else wraps it.
+- Extension stays — but becomes a thin UI layer
+- Run `devnote search "auth"` in terminal without any IDE
+- MCP server = 100-line wrapper around CLI commands
+- Plugin = packaging of MCP + skills for distribution
+- Tomorrow's AI tool? Write a new wrapper in a few hours.
+
+**This is the architecture context-mode uses.** One core sandbox, many frontends.
+
+**Verdict:** 🟢🟢 Future-proof. Tool-agnostic.
+
+## 🔄 Refactor cost: "Do we rewrite everything?"
+
+**NO — we refactor, not rewrite.**
+
+~80% of DevNote's code is already tool-agnostic and can move to CLI with minimal changes:
+
+Only ~20% is VS-Code-specific:
+
+**Total refactor:** ~15–20 hours of focused work. Not a rewrite. Most imports just change paths.
+
+## 🛣 Proposed phased roadmap
+
+Don't pick ONE future — pick the **path** that gets to Future 3 gradually, with each step shippable on its own.
+
+### Why this sequence
+
+1. **v0.5.0 ships YOUR idea fast** — validates user demand, delivers something this week
+2. **v0.6.0 does the strategic refactor** — future-proofs DevNote
+3. **v0.7.0 unlocks agentic AI** — AI tools autonomously pull context
+4. **v0.8.0 is distribution** — plugin marketplace = one-click install
+5. **v0.9.0+ is expansion** — each new AI tool = small wrapper, not big rewrite
+
+**Nothing is wasted.** Each release builds on the last. Extension never dies — it evolves into a thin UI layer on top of the CLI core.
+
+## 🎯 The 2026 reality check
+
+Where is the AI tooling landscape likely headed in 12–18 months:
+
+- **MCP** becomes table-stakes across AI tools
+- **Plugin marketplaces** drive distribution (Claude Code plugins, Cursor plugins)
+- **Terminal-first AI workflows** keep growing (`claude`, `gh copilot`, etc.)
+- **Multiple IDEs coexist** — VS Code won't die but won't dominate
+- **AI tools proliferate** — can't predict which is dominant in 2 years
+
+**CLI-first is the only architecture that survives all scenarios.** Extension-centric dies if VS Code loses share. MCP-only works but only for AI-driven contexts. CLI-first works everywhere.
+
+## ❓ Open decisions for collaboration
+
+### Decision 1 — v0.5.0 scope
+
+- **(a)** Checkbox UX + Clipboard + File drop (ship fast, small, validates concept)\
+Yeah, this will work but clipboard paste get ugly really fast. UX poor. I'd prefer much cleaner user input field. \
+File drop is a better alternative. Instead of writing everything to a same context file and load it, Why not create a context folder in the codebase itself which can be git sync'ed. \
+Add context files as like other files. (Simplest ever).
+- **(b)** Skip checkbox UX, go straight to CLI extraction (bigger bet, future-proof sooner)
+   - One more question is do we couple the embeding within cli or cli can just work for md contexts.
+- **(c)** Do BOTH in v0.5.0 (double scope, slower ship)
+
+### Decision 2 — 5-release phased roadmap
+
+Are we comfortable with the v0.5 → v0.9 plan above? Any stages to swap/skip/combine?
+
+### Decision 3 — within v0.5.0 (if chosen)
+
+If we ship checkbox UX in v0.5.0:
+
+- **D15:** Delivery = Clipboard (A) + File drop (B) together, or just one?
+   - See if we can avoid all the next 4 questions with the above approach just storing each context as file and try to load those files right away.
+- **D16:** Default action on "Add to Context" click?
+- **D17:** Selection UX — checkboxes + bottom button, or right-click menu, or multi-select with Shift?
+- **D18:** Markdown format — concatenated with `---` separators? Per-note files in a folder? Include metadata (branch, date) in the bundle?
+
+### Decision 4 — plugin ecosystem scope
+
+Which AI tools to target in v0.8.0+ order of priority?
+
+- Claude Code
+- Cursor
+- Continue.dev
+- Windsurf
+- Zed
+- Claude Desktop (MCP only, no plugin needed)
+
+## 📎 Appendix — terms and references
+
+- **RAG** (Retrieval-Augmented Generation): Pattern where you retrieve relevant context from a knowledge base, then pass it to an LLM as grounding. DevNote v0.4.0 built the retrieval layer.
+- **MCP** (Model Context Protocol): Anthropic's standard protocol for AI tools to interact with external data sources. [modelcontextprotocol.io](https://modelcontextprotocol.io)
+- **Embeddings**: Numerical vector representations of text, used for semantic similarity search. DevNote uses `gemini-embedding-001` (3072-dim, L2-normalized, dot-product similarity).
+- **Context window**: The chunk of text an LLM can "see" in a single call. Efficient retrieval = fit only relevant notes into this window.
+- **context-mode**: Reference plugin for Claude Code that does token-budget management via MCP + hooks. Exemplar of what a DevNote plugin could look like.
+
+**End of brainstorm doc.** Share this with collaborators for feedback before we lock decisions.

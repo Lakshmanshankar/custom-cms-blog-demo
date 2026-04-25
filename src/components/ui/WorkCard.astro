@@ -1,0 +1,42 @@
+---
+import ArrowIcon from "@/components/ui/ArrowIcon.astro";
+
+interface Props {
+    title: string;
+    description: string;
+    date: string;
+    endDate: string;
+    role: string;
+    url: string;
+    showArrow?: boolean;
+}
+
+const { title, description, date, url, endDate, role, showArrow = true } = Astro.props;
+---
+
+<a
+    href={url}
+    class="post-item block my-0 py-5 no-underline hover:transition-all muted-hover relative group px-4 md:px-8 rounded-md"
+>
+    <div>
+        <div class="flex gap-2 items-center justify-between">
+            <h4 class="my-0 mt-2 flex flex-col gap-3">
+                <span>
+                    <span class="text-black dark:text-white font-semibold">
+                        {title}
+                    </span>
+                    <span class="text-amber-500">•</span>
+                    <span class="gradient-text">{role}</span>
+                </span>
+
+                <span>
+                    {date} - {endDate}
+                </span>
+            </h4>
+            {showArrow && <ArrowIcon class="mt-2 hidden md:block" />}
+        </div>
+    </div>
+    <p class="text-[16px] my-1 mt-4 mb-3">
+        {description}
+    </p>
+</a>

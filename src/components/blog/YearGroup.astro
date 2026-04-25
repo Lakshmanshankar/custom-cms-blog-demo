@@ -1,0 +1,22 @@
+---
+import type { CollectionEntry } from "astro:content";
+import BlogPostCard from "./BlogPostCard.astro";
+
+interface Props {
+    year: string;
+    posts: CollectionEntry<"blog">[];
+}
+
+const { year, posts } = Astro.props;
+---
+
+<>
+    <ul
+        class="list-none py-4 pb-0 mt-0 flex flex-col gap-0 transition-all px-4 md:px-10 full-width"
+    >
+        <span class="my-2"> {posts.length >= 1 ? year : null} </span>
+        {posts.map((post) => <BlogPostCard post={post} year={year} />)}
+
+        <span class="horizontal-line"> </span>
+    </ul>
+</>

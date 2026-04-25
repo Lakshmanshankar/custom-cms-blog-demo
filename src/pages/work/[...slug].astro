@@ -1,0 +1,53 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { getCollection, getEntry, render, type CollectionEntry } from "astro:content";
+
+export async function getStaticPaths() {
+    const workPosts = await getCollection("work");
+    return workPosts.map((post: { id: any }) => ({
+        params: { slug: post.id },
+        props: { post },
+    }));
+}
+interface Props {
+    post: CollectionEntry<"work">;
+}
+const { post } = Astro.props;
+const entry = await getEntry("work", post.id);
+
+if (!entry) {
+    return new Response("Not Found", {
+        status: 404,
+        statusText: "Not Found",
+    });
+}
+const { Content } = await render(entry);
+---
+
+<Layout title={entry.data.company} description={`My ${entry.data.role} at ${entry.data.company}`}>
+    <div class="flex flex-col md:flex-row justify-between md:items-center py-4">
+        <div>
+            <h2 class="mt-0 md:mt-2">{entry.data.company}</h2>
+            <h3 class="mt-0 md:mt-2">{entry.data.role}</h3>
+        </div>
+
+        <div class="flex tex-sm md:flex-row h-fit gap-2">
+            <h4 class="m-0 h-fit text-sm text-muted-background">{entry.data.dateStart}</h4>
+            <h4 class="m-0 h-fit text-sm text-muted-background hidden md:block">-</h4>
+            <h4 class="m-0 h-fit text-sm text-muted-background">{entry.data.dateEnd}</h4>
+        </div>
+    </div>
+    <p class="mt-2">{entry.data.description}</p>
+    <span>
+        Tech Stack:
+        <div class="flex flex-wrap">
+            {
+                entry.data.tech
+                    ?.split(",")
+                    ?.map((tech) => <span class="tag-btn muted-background">{tech}</span>)
+            }
+        </div>
+    </span>
+    <br />
+    <Content />
+</Layout>

@@ -1,0 +1,36 @@
+---
+import { getCollection } from "astro:content";
+import { SITE } from "@/consts";
+import WorkCard from "@/components/ui/WorkCard.astro";
+
+const works = await getCollection("work");
+let countWorks = 0;
+const newWorks = works.filter((work) => {
+    if (!work.data.draft) {
+        countWorks++;
+    }
+    return !work.data.draft && countWorks <= SITE.NUM_WORKS_ON_HOMEPAGE;
+});
+
+type Props = {
+    obeyCount?: boolean;
+};
+const { obeyCount = false } = Astro.props;
+const renderWorks = obeyCount ? newWorks : works;
+---
+
+<div class="works-container mb-0" id="works-container">
+    <h3 class="mb-5">Work Experience</h3>
+    {
+        renderWorks.map((work) => (
+            <WorkCard
+                title={work.data.company}
+                description={work.data.description}
+                date={work.data.dateStart}
+                url={`/work/${work.id}`}
+                endDate={work.data.dateEnd}
+                role={work.data.role}
+            />
+        ))
+    }
+</div>

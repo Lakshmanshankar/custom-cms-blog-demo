@@ -1,0 +1,75 @@
+---
+// src/components/TableOfContents.astro
+import type { MarkdownHeading } from "astro";
+
+interface Props {
+    headings: MarkdownHeading[];
+    activeIndex?: number;
+}
+
+const { headings } = Astro.props;
+const filteredHeadings = headings.filter((h) => h.depth >= 1 && h.depth <= 3);
+---
+
+<nav
+    aria-labelledby="table-of-contents"
+    class="xl:block xl:fixed right-16 top-10 max-w-[400px] max-h-[86vh] line-clamp-1 overflow-x-visible overflow-y-scroll hide-scrollbar border-none"
+>
+    {
+        filteredHeadings.length > 1 && (
+            <p
+                id="table-of-contents"
+                class="animate show mb-0 dark:text-white text-black text-lg font-semibold "
+            >
+                Table of Contents
+            </p>
+        )
+    }
+    <ul class="toc-container animate show flex flex-col mt-5 overflow-visible px-0">
+        {
+            filteredHeadings.map((heading) => (
+                <li class="text-left underline-none my-0.5">
+                    <a
+                        href={`#${heading.slug}`}
+                        class={`toc-link hover:scale-110 dark:text-neutral-500 hover:dark:text-white text-stone-500 hover:text-black tracking-tight font-normal text-left underline-none`}
+                        data-scroll-target
+                        data-target-id={heading.slug}
+                    >
+                        {heading.text}
+                    </a>
+                </li>
+            ))
+        }
+    </ul>
+</nav>
+
+<script>
+    import type { HTMLTag } from "astro/types";
+
+    function smoothScroll() {
+        const scrollTargets = document.querySelectorAll("[data-scroll-target]");
+        const offset = 100; // Adjust this value based on your header height or desired spacing
+
+        scrollTargets.forEach((target) => {
+            target.addEventListener("click", (e) => {
+                e.preventDefault();
+                const targetId = target.getAttribute("href") as unknown as HTMLTag;
+                const targetElement = document.querySelector(targetId);
+
+                if (targetElement) {
+                    const elementPosition = targetElement.getBoundingClientRect().top;
+                    const offsetPosition = window.pageYOffset + elementPosition - offset;
+
+                    window.scrollTo({
+                        top: offsetPosition,
+                        behavior: "smooth",
+                    });
+                }
+            });
+        });
+    }
+
+    document.addEventListener("astro:page-load", smoothScroll);
+    document.addEventListener("DOMContentLoaded", smoothScroll);
+    smoothScroll();
+</script>

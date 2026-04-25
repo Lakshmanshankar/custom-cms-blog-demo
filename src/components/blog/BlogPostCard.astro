@@ -1,0 +1,53 @@
+---
+import type { CollectionEntry } from "astro:content";
+import FormattedDate from "@/components/ui/FormattedDate.astro";
+import ArrowIcon from "@/components/ui/ArrowIcon.astro";
+
+interface Props {
+    post: CollectionEntry<"blog">;
+    year: string;
+}
+
+const { post, year } = Astro.props;
+---
+
+<>
+    <a
+        href={`/blog/${post.id}`}
+        class="post-item block p-4 py-5 no-underline relative group bg-opacity-80 px-4 md:px-6 rounded-md subtle-hover"
+        data-filter-tags={post.data.tags && post.data.tags.join(",")}
+        data-year={year}
+    >
+        <div>
+            <div class="flex justify-between">
+                <div class="flex md:gap-2 md:items-center">
+                    <h4 class="my-0 gap-2">{post.data.title}</h4>
+                </div>
+                <ArrowIcon class="mt-2 hidden md:block" />
+            </div>
+            <p class="text-[16px] my-1">
+                {post.data.description}
+            </p>
+
+            <span class="text-sm flex items-center">
+                {
+                    post.data.tags && post.data.tags.length > 0 && (
+                        <div class="flex gap-1.5 items-center">
+                            <div class="flex flex-wrap mt-2">
+                                {post.data.tags.map((tag: string) => (
+                                    <span class="border borders dark:text-neutral-200 text-stone-950 text-xs font-medium px-2 py-1">
+                                        {tag}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )
+                }
+                <FormattedDate
+                    date={new Date(post.data.date)}
+                    class="text-sm border px-1 mt-2 border-black/50 dark:border-white/60"
+                />
+            </span>
+        </div>
+    </a>
+</>

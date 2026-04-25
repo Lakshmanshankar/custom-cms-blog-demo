@@ -1,0 +1,44 @@
+---
+// ReferenceTable.astro
+// Usage: <ReferenceTable references={[{ title: 'React 19 Blog', url: 'https://...' }]} />
+---
+
+<div class="reference-table">
+  <table>
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Link</th>
+      </tr>
+    </thead>
+    <tbody>
+      {Astro.props.references.map((ref: { title: unknown; url: string; }) => (
+        <tr>
+          <td>{ref.title}</td>
+          <td><a href={ref.url} target="_blank" rel="noopener noreferrer">{ref.url}</a></td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+
+<style>
+  .reference-table table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+
+  .reference-table th,
+  .reference-table td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border, #333);
+    text-align: left;
+    font-size: 0.95rem;
+  }
+
+  .reference-table a {
+    color: var(--accent, #9ccaff);
+    word-break: break-all;
+  }
+</style>

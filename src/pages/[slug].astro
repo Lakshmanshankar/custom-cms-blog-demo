@@ -1,0 +1,32 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { getCollection, getEntry, render } from "astro:content";
+
+export async function getStaticPaths() {
+  const pages = await getCollection("pages");
+  const posts = pages.filter((item)=> item.data?.draft !== true);
+  return posts.map((post: { id: any }) => {
+    return {
+        params: { slug: post.id },
+        props: { post },
+    }
+  });
+}
+
+const { post } = Astro.props;
+const entry = await getEntry("pages", post.id);
+if (!entry) {
+  return new Response("Not Found", {
+    status: 404,
+    statusText: "Not Found",
+  });
+}
+
+const { Content } = await render(entry);
+---
+
+<Layout title={entry.data.title} description={entry.data.description}>
+  <article>
+    <Content />
+  </article>
+</Layout>

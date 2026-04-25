@@ -1,0 +1,35 @@
+---
+import { getCollection } from "astro:content";
+import { SITE } from "@/consts";
+import ContentCard from "@/components/ui/ContentCard.astro";
+
+const posts = await getCollection("project");
+let countProjects = 0;
+const newPosts = posts.filter((post) => {
+    if (!post.data.draft) {
+        countProjects++;
+    }
+    return !post.data.draft && countProjects <= SITE.NUM_WORKS_ON_HOMEPAGE;
+});
+
+type Props = {
+    obeyCount?: boolean;
+};
+const { obeyCount = false } = Astro.props;
+const renderProjects = obeyCount ? newPosts : posts;
+---
+
+<div class="projects-container" id="projects-container">
+    <h3 class="mb-4">Projects</h3>
+    {
+        renderProjects.map((post) => (
+            <ContentCard
+                title={post.data.title}
+                description={post.data.description}
+                date={new Date(post.data.date)}
+                url={`/projects/${post.id}`}
+                tags={[]}
+            />
+        ))
+    }
+</div>

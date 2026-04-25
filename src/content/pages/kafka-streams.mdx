@@ -1,0 +1,59 @@
+---
+title: "Kafka streams"
+slug: "/kafka-streams"
+description: "Nov 21, 2025 • 5 min read The Challenge of Real Time Data Simplifying Real Time Analytics with Kafka Streams In modern software development, waiting for nightly"
+date: "2026-04-25T03:38:26.625Z"
+---
+
+Nov 21, 2025 • 5 min read
+
+### The Challenge of Real-Time Data
+
+# Simplifying Real-Time Analytics with Kafka Streams
+
+In modern software development, waiting for nightly batch jobs to process data is often too slow. Whether you are building a fraud detection system, a live dashboard, or a recommendation engine, you need to process data as it arrives.
+
+For many developers, moving from traditional "Request-Response" architectures to "Event-Driven" systems feels daunting. You might worry about managing complex clusters, handling state, or ensuring fault tolerance.
+
+### The Solution: Kafka Streams
+
+Kafka Streams is a client library for building applications and microservices where the input and output data are stored in Kafka clusters. Unlike other stream processing frameworks (like Apache Flink or Spark), it is a **library**, not a cluster. This means you don't need to manage a separate processing cluster; you just run your application like any other Java or Kotlin service.
+
+### Core Concepts
+
+To understand Kafka Streams, you need to grasp two fundamental abstractions:
+
+1. **KStream:** Represents an unbounded stream of data. Think of it as a log where every new record is an insert.
+2. **KTable:** Represents a changelog stream. Think of it as a database table where each record is an upsert (update or insert) based on its key.
+
+### Getting Started
+
+To use Kafka Streams, you simply add the dependency to your project and define your topology. Here is how you initialize a basic stream processing application:
+
+<Code format="start" lang="java" value={"StreamsBuilder builder = new StreamsBuilder();\nKStream<String, String> source = builder.stream(\"input-topic\");\n\n// Processing logic here\n\nsource.to(\"output-topic\");\nKafkaStreams streams = new KafkaStreams(builder.build(), props);\nstreams.start();"} />
+
+### Example: Real-time Word Count
+
+Let's look at the "Hello World" of streaming. Imagine we want to count the occurrences of words in a live stream of text.
+
+With Kafka Streams, this complex stateful operation is reduced to just a few lines of code:
+
+<Code format="start" lang="java" value={"KTable<String, Long> wordCounts = textLines\n    .flatMapValues(text -> Arrays.asList(text.toLowerCase().split(\"\\\\W+\")))\n    .groupBy((key, word) -> word)\n    .count();"} />
+
+In the background, Kafka Streams handles the **State Store** for you. If your application crashes, it uses a "changelog topic" in Kafka to restore the counts and resume exactly where it left off.
+
+<Code format="start" lang="js" value={"<Input\n        ref={renameInputRef}\n        variant=\"inline\"\n        value={renameValue}\n        onChange={(e) => onRenameValueChange(e.target.value)}\n        onBlur={() => void onRenameSubmit()}\n        onKeyDown={(e) => {\n          if (e.key === \"Enter\") void onRenameSubmit();\n          if (e.key === \"Escape\") onRenameCancel();\n        }}\n        onMouseDown={(e) => e.stopPropagation()}\n        onClick={(e) => e.stopPropagation()}\n        placeholder=\"Name\"\n        aria-label=\"Rename\"\n        className=\"flex-1 min-w-0\"\n      />"} />
+
+### Why use it?
+
+- **No separate cluster:** It runs as part of your application.
+- **Scalability:** It leverages Kafka's consumer groups to parallelize processing.
+- **Exactly-once processing:** It guarantees that each record is processed once and only once, even if there are failures.
+
+### Note:
+
+Since Kafka Streams is a library, your application’s performance is tied to the resources of the machine it runs on. For heavy stateful operations, ensure your instances have enough local disk space for the RocksDB state stores.
+
+### History
+
+<Spacer />

@@ -1,0 +1,44 @@
+---
+import { SOCIALS } from "@/consts";
+import GITHUB from "../../assets/github.svg";
+import LINKEDIN from "../../assets/linkedin.svg";
+import TWITTER from "../../assets/twitter_x.svg";
+import MEDIUM from "../../assets/medium.svg";
+import LEETCODE from "../../assets/leetcode.svg";
+
+const ICON_MAP = {
+    github: GITHUB,
+    linkedin: LINKEDIN,
+    twitter: TWITTER,
+    medium: MEDIUM,
+    leetcode: LEETCODE,
+} as const;
+
+type IconName = keyof typeof ICON_MAP;
+---
+
+<div class="flex gap-3 justify-start mt-5">
+    {
+        SOCIALS.map((social) => {
+            const IconComponent = ICON_MAP[social.NAME.toLowerCase() as IconName];
+            return (
+                <a
+                    href={social.HREF}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="no-underline"
+                    aria-label={social.NAME}
+                >
+                    {IconComponent && (
+                        <IconComponent
+                            class="w-6 h-6"
+                            width={100}
+                            height={100}
+                            aria-hidden="true"
+                        />
+                    )}
+                </a>
+            );
+        })
+    }
+</div>

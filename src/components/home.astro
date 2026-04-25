@@ -1,0 +1,142 @@
+---
+import ProjectItems from "./project/project-cards.astro";
+import ContactFooter from "./ui/ContactFooter.astro";
+import WorkItems from "./work/work-cards.astro";
+
+import { Schema } from "astro-seo-schema";
+import { SOCIALS } from "../consts";
+
+const sameAsLinks = SOCIALS.map((s) => s.HREF);
+---
+
+<head>
+    <Schema
+        item={{
+            "@context": "https://schema.org",
+            "@type": "Person",
+            name: "Lakshmanshankar",
+            alternateName: "Lakshman Shankar",
+            description:
+                "I am a Full Stack Developer with over 1.4 years of experience. I am currently working at Bullet.so, a website builder that uses Notion as a CMS.",
+            alumniOf: [
+                {
+                    "@type": "CollegeOrUniversity",
+                    name: "Bharathiar University",
+                    sameAs: "https://www.b-u.ac.in/",
+                },
+                {
+                    "@type": "CollegeOrUniversity",
+                    name: "KPR College of Arts and Science",
+                    sameAs: "https://www.kprcas.ac.in/",
+                },
+            ],
+            knowsAbout: ["Full Stack Development", "Computer Science", "Cloud Computing"],
+            sameAs: sameAsLinks,
+        }}
+    />
+</head>
+
+<div id="container">
+    <article class="animate show">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div class="">
+                <h3 class="text-lg mb-2">👋 Hii, I am</h3>
+                <h2
+                    class="font-bold bg-gradient-to-r from-red-500 to-pink-500 bg-clip-text text-transparent mb-4"
+                >
+                    Lakshmanshankar
+                </h2>
+                <h4 class="">Full Stack Developer</h4>
+                <p class="mt-2">Coimbatore - Chennai</p>
+            </div>
+            <div class="">
+                <img
+                    src="https://invk935vtx.ufs.sh/f/WLuidxolfrXgBf3Jo9QrpKQPOU5NyWRFZEd4HIiM3vXTuhqw"
+                    alt="Lakshmanshankar"
+                    class="max-w-md w-[250px] rounded-full h-[250px] object-cover object-[center_0px]"
+                />
+            </div>
+        </div>
+        <p>
+            I"m a Full Stack Developer at <a href="https://bounteous.com" target="_blank"
+                ><strong>@bounteous</strong></a
+            >
+            ., working with React and Ruby. My main focus has always been around content systems and
+            rich text editors — I've contributed to <a
+                href="https://github.com/facebook/lexical"
+                target="_blank"><strong>Lexical</strong></a
+            >
+            and am currently building my own experimental editor, <a
+                href="https://formless-editor.vercel.app"
+                target="_blank"
+            >
+                <strong>Formless</strong></a
+            >.
+        </p>
+        <ul>
+            <li>
+                Passionate about open source and developer tools — check out my work at
+                <strong
+                    ><a href="https://github.com/lakshmanshankar" target="_blank"
+                        ><strong>@lakshmanshankar</strong></a
+                    ></strong
+                >.
+            </li>
+            <li>
+                I enjoy refining my setup and automating small details — here are my
+                <a href="https://github.com/lakshmanshankar/dotfiles" target="_blank">dotfiles</a>.
+            </li>
+            <li>
+                🤞 <em>“Even a small pit holds the promise of a mighty tree.”</em> — Master Oogway
+            </li>
+        </ul>
+    </article>
+
+    <section id="projects" class="pt-5 transition-all px-4 md:px-10 full-width pb-10 rounded-md">
+        <ProjectItems obeyCount={true} />
+    </section>
+
+    <section id="work" class="pt-5 transition-all px-4 md:px-10 full-width pb-10 rounded-md">
+        <WorkItems obeyCount={true} />
+    </section>
+    <h3 class="mt-4 mb-7">Skills</h3>
+    <section class="flex justify-between flex-col lg:flex-row">
+        <div>
+            <h4 class="mt-0 ml-8">Languages</h4>
+            <ul>
+                <li>Typescript</li>
+                <li>Go</li>
+                <li>Python</li>
+            </ul>
+        </div>
+
+        <div>
+            <h4 class="mt-0 ml-8">Frameworks & Tools</h4>
+            <ul>
+                <li>React, Next</li>
+                <li>Lexical, Excalidraw</li>
+                <li>Docker</li>
+            </ul>
+        </div>
+
+        <div>
+            <h4 class="mt-0 ml-8">Databases</h4>
+            <ul>
+                <li>Postgres</li>
+                <li>Firestore</li>
+            </ul>
+        </div>
+    </section>
+
+    <section class="pt-5 mt-5 border-colors px-4 md:px-10 full-width pb-10">
+        <h3>Contact</h3>
+        <p>
+            You can contact me directly @<a href="mailto:lakshmanshankarc@gmail.com"
+                >lakshmanshankarc@gmail.com</a
+            > or you can reach me on any of the following platforms:
+        </p>
+        <div class="text-white dark:text-white">
+            <ContactFooter />
+        </div>
+    </section>
+</div>

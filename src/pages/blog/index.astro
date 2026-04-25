@@ -1,0 +1,9 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { BLOG } from "@/consts";
+import BlogCards from "@/components/blog/blog-cards.astro";
+---
+
+<Layout title={BLOG.TITLE} description={BLOG.DESCRIPTION}>
+    <BlogCards />
+</Layout>

@@ -1,0 +1,277 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+    font-family: "Geist";
+    src: url("/geist-regular.woff2") format("woff2");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+:root {
+    --main-bg: #fafafa;
+    --primary-font: "Geist", serif;
+    --border-color: #d3c8b7;
+}
+
+.dark {
+    --main-bg: #0a0a0a;
+    --border-color: #2a2a2a;
+}
+
+html,
+body {
+    @apply bg-neutral-50 dark:bg-neutral-950 text-stone-900 dark:text-neutral-900;
+}
+
+html {
+    font-family: var(--primary-font);
+    background: var(--main-bg);
+}
+
+main {
+    @apply prose dark:prose-invert leading-normal border-l border-r border-stone-400 dark:border-neutral-800;
+}
+
+/* NAVBAR */
+nav,
+.nav-items > a,
+.borders {
+    @apply mt-0 bg-[var(--main-bg)];
+}
+.border-colors {
+    @apply border-stone-300/70 dark:border-neutral-800;
+}
+.muted-background {
+    @apply bg-stone-200/70 dark:bg-neutral-800/50 border-y border-colors;
+}
+.muted-hover {
+    @apply hover:bg-stone-200/70 hover:dark:bg-neutral-800/50;
+}
+hr {
+    @apply border-colors bg-transparent p-0 mx-0 relative;
+}
+
+.tag-btn {
+    @apply p-1 px-2 border-colors border m-0;
+}
+.tag-btn:hover,
+.tag-btn.active {
+    @apply text-black transition-colors dark:text-white border-neutral-600 dark:border-neutral-500;
+}
+
+.nav-items a {
+    @apply border-none flex items-center justify-center h-14 md:h-10 mt-0 px-1.5 md:px-3 subtle-hover;
+}
+
+.subtle-hover {
+    @apply transition-all;
+}
+.subtle-hover:hover {
+    @apply bg-stone-200 dark:hover:bg-neutral-900 transition-all;
+}
+.nav-items {
+    margin-top: 0px !important;
+}
+
+.full-width {
+    @apply -mx-4 md:-mx-10  w-[unset] relative;
+}
+
+.w-hundred {
+    @apply -mx-4 md:-mx-10 w-[unset] relative;
+}
+a {
+    @apply text-base;
+}
+
+a > span:hover {
+    color: black;
+    transition: color 0.3s ease-in-out;
+}
+
+.dark a > span:hover {
+    color: white;
+    transition: color 0.3s ease-in-out;
+}
+
+pre {
+    position: relative;
+    overflow-x: auto;
+    white-space: pre;
+    word-wrap: normal;
+}
+
+pre > code {
+    display: block;
+    white-space: pre;
+}
+
+.horizontal-line {
+    height: 30px;
+    display: block;
+    width: 100%;
+    background-image: repeating-linear-gradient(
+        120deg,
+        var(--border-color) 0px,
+        transparent 2px,
+        transparent 5px
+    );
+    margin: 0;
+}
+
+.horizontal-line {
+    @apply borders;
+}
+
+li {
+    @apply tracking-tight;
+}
+
+p {
+    @apply mt-5;
+}
+
+.astro-code span {
+    font-size: 14px;
+}
+
+/* SHIKI STYLES */
+.dark .astro-code,
+.dark .astro-code span {
+    color: var(--shiki-dark) !important;
+    background-color: var(--shiki-dark-bg) !important;
+    font-style: var(--shiki-dark-font-style) !important;
+    font-weight: var(--shiki-dark-font-weight) !important;
+    text-decoration: var(--shiki-dark-text-decoration) !important;
+}
+
+.gradient-red {
+    background: -webkit-linear-gradient(0deg, #ff8922 20%, #ff279c 50%, #d9113f 80%);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+.gradient-blue {
+    background: -webkit-linear-gradient(0deg, #15c1ff 20%, #45e9ff 50%, #1077cb 80%);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+.dark .gradient-blue {
+    background: -webkit-linear-gradient(0deg, #04ffa3 20%, #45e9ff 50%, #1077cb 80%);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+.image-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: var(--main-bg);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.large-image {
+    max-width: 90%;
+    max-height: 90%;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* TOGGLE CODE BLOCK */
+details {
+    @apply my-4 border border-stone-200 dark:border-neutral-800 rounded-md overflow-hidden;
+}
+
+details summary {
+    @apply cursor-pointer px-4 py-2 bg-stone-100 dark:bg-neutral-900 flex items-center font-mono text-sm text-stone-700 dark:text-neutral-300;
+    list-style: none;
+}
+
+details summary {
+    color: inherit;
+    /* Make sure summary text color is set */
+}
+
+details summary::before {
+    content: "";
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    margin-right: 0.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z'/%3E%3Cpath d='M14 2v4a2 2 0 0 0 2 2h4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+
+.dark details summary::before {
+    filter: invert(1);
+}
+
+details summary::after {
+    content: "▼";
+    @apply text-stone-500 dark:text-neutral-500 text-sm transition-transform duration-200 ml-auto;
+}
+
+details[open] summary::after {
+    transform: rotate(180deg);
+}
+
+details summary::-webkit-details-marker {
+    display: none;
+}
+
+details > div,
+details > pre {
+    @apply p-4 bg-stone-50 dark:bg-neutral-950;
+}
+
+details pre {
+    @apply m-0 rounded-t-none;
+}
+
+details code {
+    @apply text-sm;
+}
+
+table {
+    @apply max-w-[700px] w-full block overflow-y-hidden overflow-scroll table-auto border-collapse;
+}
+
+thead th,
+tbody td {
+    @apply px-4 py-2 text-left whitespace-nowrap min-w-[160px];
+}
+
+.toc-link.toc-active {
+    @apply font-semibold underline dark:text-white text-black;
+}
+
+/* Scrollbar container */
+::-webkit-scrollbar {
+    @apply h-2 w-2;
+}
+
+/* Scrollbar track */
+::-webkit-scrollbar-track {
+    @apply bg-transparent;
+}
+
+/* Scrollbar thumb */
+::-webkit-scrollbar-thumb {
+    @apply rounded bg-neutral-300 dark:bg-neutral-700;
+}
+
+/* Scrollbar thumb on hover */
+::-webkit-scrollbar-thumb:hover {
+    @apply bg-neutral-400 dark:bg-neutral-600;
+}

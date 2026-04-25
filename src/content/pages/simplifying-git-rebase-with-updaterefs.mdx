@@ -1,0 +1,81 @@
+---
+title: "Simplifying git rebase with updaterefs"
+slug: "/simplifying-git-rebase-with-updaterefs"
+description: "Simplify rebasing in stacked branches using updateRefs Nov 21, 2025 • 4 min read Working with Stacked PRs Whether you are a developer at a small startup or a la"
+date: "2026-04-25T03:38:23.032Z"
+---
+
+<h1 class="text-center indent-0">Simplify rebasing in stacked branches using updateRefs</h1>
+
+Nov 21, 2025 • 4 min read
+
+### Working with Stacked PRs
+
+Whether you are a developer at a small startup or a large enterprise, we all use pull requests to add features. Ideally, we would like to raise small PRs that are easier to review. Smaller PRs are easier for teammates to review and approve, especially if your team is using feature flags or multiple feature branches.
+
+<Callout icon="💡" variant="success">
+Thunder cloud
+
+Why is everything ***opensource***.
+
+I don't think everything is open source.
+</Callout>
+
+<Spacer />
+
+For a single feature, you might raise multiple PRs sequentially, like this:
+
+<Code format="start" lang="bash" value={"master -> ..c..c.. (feature A)\nmaster -> ..c..c.. (feature A) -> ..c..c.. (feature B)\nmaster -> ..c..c.. (feature A) -> ..c..c.. (feature B) -> ..c.. (feature C)"} />
+
+### The problems
+
+Whenever I push code to GitHub, there are two main sources of anxiety for me:
+
+1. Will all the CI tests pass?
+2. Will I get review comments?
+
+The second one causes even more mental stress, especially when I have stacked branches on top of the current branch. If the PR takes a long time to review, merge conflicts can occur, and now we have to resolve the same conflicts in multiple feature branches.
+
+I’ve been in situations where a teammate and I were working on similar features, and the pain of resolving conflicts and rebasing stacked branches is hard to describe in words.
+
+### The Solution
+
+After struggling with this for a while, I found a solution that fits perfectly for my use case: `rebase.updateRefs`.
+
+When enabled, updateRefs keeps track of branch heads for stacked branches. This means that when I add fixup commits or resolve merge conflicts on the latest branch, these changes are automatically reflected in dependent branches. No more manually rebasing each branch one by one!
+
+Sounds cool, right? Let’s see how we can use `updateRefs`
+
+<Code format="start" lang="shell" value={"git config --global rebase.updateRefs true"} />
+
+Example we have three feature branches `feat-a`,`feat-b` and `feat-c` as follows.
+
+<Code format="start" lang="shell" value={"> git log --oneline\n2f4abed (HEAD -> feat-c) feat_c: commit-1\n2bed7d2 (feat-b) feat_b: commit-1\n259b5c8 (feat-a) feat_a: commit-1\n077ef7c feat_a: commit-1\n391ca2e (master) init"} />
+
+Say now we raised three PRs and got some review comments that require us to add changes to `feat-a`. In the ordinary way, we would checkout the `feat-a` branch and make modifications there, then rebase the other two branches to include the latest commit we added.
+
+But with updateRefs, we can make modifications by staying in the latest branch (feat-c). In `feat-c` branch make changes and create a fixup commit for second commit of the `feat-a` **8199983**.
+
+<Code format="start" lang="sh" value={"git add . && git commit --fixup=8199983"} />
+
+Now rebase the fixup commit with `master` or the parent of `feat-a`. This is to include all the commits of `feat-a` onwards in the interactive rebase. So that we can squash or correcty place the fixup commit to it’s target.
+
+<Code format="start" lang="sh" value={"git rebase --interactive --autostash master"} />
+
+Move the fixup commit to `feat-a` commit - 2
+
+<Code format="start" lang="sh" value={"pick 077ef7c # feat_a: commit-1\npick 8199983 # feat_a: commit-2\npick f76e2a9 # fixup! feat_a: commit-2 # <---------- TO MOVED HERE\nupdate-ref refs/heads/feat-a\n\npick cd066e7 # feat_b: commit-1\nupdate-ref refs/heads/feat-b\n\npick ba57a88 # feat_c: commit-1\npick f76e2a9 # fixup! feat_a: commit-2 # <---------- FROM HERE"} />
+
+That’s it! Git will now automatically rebase the refs in the `feat-a` and `feat-b` branches:
+
+<Code format="start" lang="sh" value={"Successfully rebased and updated refs/heads/feat-c.\nUpdated the following refs with --update-refs:\n\trefs/heads/feat-a\n\trefs/heads/feat-b"} />
+
+<Spacer />
+
+<Callout icon="💡" variant="tip">
+### Note
+
+This will update the commit history of `feat-b` and `feat-c` so you have to force push the changes to Github.
+</Callout>
+
+<Spacer />

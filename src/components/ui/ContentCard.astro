@@ -1,0 +1,43 @@
+---
+import FormattedDate from "@/components/ui/FormattedDate.astro";
+import ArrowIcon from "@/components/ui/ArrowIcon.astro";
+
+interface Props {
+    title: string;
+    description: string;
+    date: Date;
+    url: string;
+    tags?: string[];
+    showArrow?: boolean;
+}
+
+const { title, description, date, url, tags = [], showArrow = true } = Astro.props;
+---
+
+<a
+    href={url}
+    class="post-item block my-0 py-3 no-underline hover:transition-all muted-hover relative group px-4 md:px-5 rounded-md"
+    data-filter-tags={tags.join(",")}
+>
+    <div>
+        <div class="flex gap-2 items-center justify-between">
+            <h4 class="my-0 mt-2">{title}</h4>
+            {showArrow && <ArrowIcon class="mt-2 hidden md:block" />}
+        </div>
+        <p class="text-[16px] my-1 mt-4 mb-3">
+            {description}
+            <FormattedDate date={date} includeYear />
+        </p>
+        {
+            tags.length > 0 && (
+                <div class="flex flex-wrap gap-2 mt-1 mb-2">
+                    {tags.map((tag) => (
+                        <span class="dark:bg-neutral-800 bg-stone-200 dark:text-neutral-200 text-stone-950 text-xs font-medium px-2 py-1 rounded-md">
+                            {tag}
+                        </span>
+                    ))}
+                </div>
+            )
+        }
+    </div>
+</a>

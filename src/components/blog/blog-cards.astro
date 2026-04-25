@@ -1,0 +1,110 @@
+---
+import { getCollection } from "astro:content";
+import type { CollectionEntry } from "astro:content";
+import TagFilter from "@/components/blog/TagFilter.astro";
+import YearGroup from "@/components/blog/YearGroup.astro";
+
+const allPosts = await getCollection("blog")
+const posts = allPosts.filter((item)=> item.data?.draft !== true);
+
+type GroupedPosts = {
+    [key: string]: CollectionEntry<"blog">[];
+};
+
+let groupedPosts: GroupedPosts = posts.reduce((acc, post) => {
+    const date = new Date(post.data.date).getFullYear().toString();
+    if (!acc[date]) {
+        acc[date] = [];
+    }
+    acc[date].push(post);
+    return acc;
+}, {} as GroupedPosts);
+
+for (let [key, value] of Object.entries(groupedPosts)) {
+    groupedPosts[key] = value.sort(
+        (a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime(),
+    );
+}
+
+// Get all unique tags
+const allTags = Array.from(
+    new Set(
+        Object.values(groupedPosts).flatMap((posts) => posts.flatMap((post) => post.data.tags)),
+    ),
+);
+---
+
+<div class="">
+  <p class="mb-1">
+  Most of these posts were written on nights I couldn’t sleep until I understood the problem. I’m leaving them here so future me can look back and smile.
+    </p>
+    <div class="">
+        <div class="list-none pl-0">
+            <TagFilter tags={allTags as string[]} />
+            <div id="posts-container" class="flex flex-col gap-0">
+                {
+                    Object.keys(groupedPosts)
+                        .sort((a, b) => Number(b) - Number(a))
+                        .map((year) => <YearGroup year={year} posts={groupedPosts[year]} />)
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const filterFn = () => {
+        const filterContainer = document.getElementById("filter-container");
+        const postsContainer = document.getElementById("posts-container");
+        if (!filterContainer || !postsContainer) return;
+
+        const filterButtons = filterContainer.querySelectorAll("button");
+        Array.from(filterButtons).forEach((tagBtn) => {
+            tagBtn.addEventListener("click", (event) => {
+                const selectedButton = event.target as HTMLButtonElement;
+                filterButtons.forEach((button) => {
+                    button.classList.remove("active");
+                    button.setAttribute("data-tag-current", "false");
+                });
+                selectedButton.classList.add("active");
+                selectedButton.setAttribute("data-tag-current", "true");
+                if (!selectedButton) return;
+                const selectedTag = selectedButton.getAttribute("data-filter-tag");
+
+                if (selectedTag === "all") {
+                    postsContainer.querySelectorAll("a").forEach((post) => {
+                        post.classList.remove("hidden");
+                    });
+                    postsContainer.querySelectorAll("ul").forEach((yearGroup) => {
+                        yearGroup.classList.remove("hidden");
+                    });
+                    return;
+                }
+
+                postsContainer.querySelectorAll("a").forEach((post) => {
+                    const postTags = post.getAttribute("data-filter-tags");
+                    if (!postTags) return;
+                    const postTagsArray = postTags.split(",");
+                    const isSelected = postTagsArray.includes(selectedTag ?? "");
+                    if (isSelected) {
+                        post.classList.remove("hidden");
+                    } else {
+                        post.classList.add("hidden");
+                    }
+                });
+
+                postsContainer.querySelectorAll("ul").forEach((yearGroup) => {
+                    const visiblePosts = yearGroup.querySelectorAll("a:not(.hidden)");
+                    if (visiblePosts.length === 0) {
+                        yearGroup.classList.add("hidden");
+                    } else {
+                        yearGroup.classList.remove("hidden");
+                    }
+                });
+            });
+        });
+    };
+    document.addEventListener("DOMContentLoaded", filterFn);
+    document.addEventListener("astro:after-swap", filterFn);
+    filterFn();
+</script>

@@ -1,0 +1,87 @@
+
+---
+import { Info, AlertCircle, CheckCircle, AlertTriangle, AlertOctagon, Lightbulb, MessageSquare } from "@lucide/astro";
+
+type CalloutVariant = "info" | "note" | "success" | "warning" | "error" | "tip" | "custom";
+
+const { variant = "info", class: className = "" } = Astro.props;
+
+const VARIANTS = {
+  info: {
+    class: "variant-info",
+    icon: Info,
+    color: "#0ea5e9",
+  },
+  note: {
+    class: "variant-note",
+    icon: MessageSquare,
+    color: "#6b7280",
+  },
+  success: {
+    class: "variant-success",
+    icon: CheckCircle,
+    color: "#10b981",
+  },
+  warning: {
+    class: "variant-warning",
+    icon: AlertTriangle,
+    color: "#f59e0b",
+  },
+  error: {
+    class: "variant-error",
+    icon: AlertOctagon,
+    color: "#ef4444",
+  },
+  tip: {
+    class: "variant-tip",
+    icon: Lightbulb,
+    color: "#8b5cf6",
+  },
+  custom: {
+    class: "variant-custom",
+    icon: AlertCircle,
+    color: "#6b7280",
+  },
+} satisfies Record<CalloutVariant, any>;
+
+const { class: variantClass, icon: Icon, color } = VARIANTS[variant];
+---
+
+<div class={`callout ${variantClass} ${className}`.trim()}>
+  <Icon size={16} style={{ color }} class="callout-icon" />
+  <div class="callout-body">
+    <slot />
+  </div>
+</div>
+
+<style>
+
+.callout {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin: 0.75rem 0;
+  border-radius: 0.125rem;
+}
+
+.callout-body {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.callout-body :global(p) {
+  margin: 0.25rem 0;
+}
+
+.callout-body :global(p:first-child) {
+  margin-top: 0;
+}
+
+.callout-body :global(p:last-child) {
+  margin-bottom: 0;
+}
+
+.callout-body :global(strong) {
+  font-weight: 600;
+}
+</style>

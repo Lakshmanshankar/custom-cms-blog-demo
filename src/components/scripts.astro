@@ -1,0 +1,243 @@
+---
+import { ClientRouter } from "astro:transitions";
+---
+
+<style>
+    @keyframes slide {
+        from {
+            opacity: 0;
+            transform: translateX(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    .slide {
+        animation: slide 0.5s ease-in-out;
+    }
+</style>
+
+<div>
+    <ClientRouter transition:animate="none" />
+</div>
+<script is:inline>
+    function initTheme() {
+        const lightThemeButton = document.getElementById("light-theme-button");
+        const darkThemeButton = document.getElementById("dark-theme-button");
+        const systemThemeButton = document.getElementById("system-theme-button");
+
+        lightThemeButton?.addEventListener("click", () => {
+            localStorage.setItem("theme", "light");
+            toggleTheme(false);
+        });
+
+        darkThemeButton?.addEventListener("click", () => {
+            localStorage.setItem("theme", "dark");
+            toggleTheme(true);
+        });
+
+        systemThemeButton?.addEventListener("click", () => {
+            localStorage.setItem("theme", "system");
+            toggleTheme(window.matchMedia("(prefers-color-scheme: dark)").matches);
+        });
+
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+            if (localStorage.theme === "system") {
+                toggleTheme(event.matches);
+            }
+        });
+    }
+
+    function toggleTheme(dark) {
+        const css = document.createElement("style");
+        css.appendChild(
+            document.createTextNode(
+                `* {
+          -webkit-transition: none !important;
+          -moz-transition: none !important;
+          -o-transition: none !important;
+          -ms-transition: none !important;
+          transition: none !important;
+        }`,
+            ),
+        );
+        document.head.appendChild(css);
+        if (dark) {
+            document.documentElement.classList.add("dark");
+        } else {
+            document.documentElement.classList.remove("dark");
+        }
+        window.getComputedStyle(css).opacity;
+        document.head.removeChild(css);
+    }
+
+    function preloadTheme() {
+        const userTheme = localStorage.theme;
+        if (userTheme === "light" || userTheme === "dark") {
+            toggleTheme(userTheme === "dark");
+        } else {
+            toggleTheme(window.matchMedia("(prefers-color-scheme: dark)").matches);
+        }
+    }
+
+    function animate() {
+        const animateElements = document.querySelectorAll(".animate");
+
+        animateElements.forEach((element, index) => {
+            setTimeout(() => {
+                element.classList.add("show");
+            }, index * 150);
+        });
+    }
+
+    function onScroll() {
+        if (window.scrollY > 0) {
+            document.documentElement.classList.add("scrolled");
+        } else {
+            document.documentElement.classList.remove("scrolled");
+        }
+    }
+
+    function scrollAnimations() {
+        const backToTop = document.getElementById("back-to-top");
+        backToTop?.addEventListener("click", (event) => scrollToTop(event));
+
+        function scrollToTop(event) {
+            event.preventDefault();
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
+        }
+    }
+
+    function previewImages() {
+        const images = document.querySelectorAll("img");
+
+        images.forEach((img) => {
+            img.addEventListener("click", () => {
+                const overlay = document.createElement("div");
+                overlay.className = "image-overlay";
+
+                const largeImg = document.createElement("img");
+                largeImg.src = img.src;
+                largeImg.className = "large-image";
+
+                overlay.appendChild(largeImg);
+                document.body.appendChild(overlay);
+
+                overlay.addEventListener("click", () => {
+                    document.body.removeChild(overlay);
+                });
+            });
+        });
+    }
+    function init() {
+        initTheme();
+        preloadTheme();
+        // animate();
+        scrollAnimations();
+        previewImages();
+
+        document.addEventListener("scroll", onScroll);
+    }
+    // Preload theme
+    document.addEventListener("DOMContentLoaded", () => init());
+    document.addEventListener("astro:after-swap", () => init());
+    preloadTheme();
+</script>
+
+<script>
+    function copyToClipboard(text: string, button: HTMLButtonElement) {
+        navigator.clipboard
+            .writeText(text)
+            .then(() => {
+                button.textContent = "Copied!";
+                button.classList.remove("code-normal");
+                button.classList.add("code-copied");
+
+                setTimeout(() => {
+                    button.textContent = "Copy";
+                    button.classList.remove("code-copied");
+                    button.classList.add("code-normal");
+                }, 2000);
+            })
+            .catch((err) => {
+                console.error("Failed to copy text: ", err);
+            });
+    }
+
+    const addCopyBtn = () => {
+        document.querySelectorAll("pre").forEach((pre) => {
+            // Create a wrapper for positioning
+            const wrapper = document.createElement("div");
+            wrapper.className = "relative";
+            pre.parentNode?.insertBefore(wrapper, pre);
+            wrapper.appendChild(pre);
+
+            const codeText = pre.textContent || "";
+            const copyButton = document.createElement("button");
+            copyButton.textContent = "Copy";
+            copyButton.className =
+                "copy-code-button absolute -top-8 right-1 p-2 rounded text-xs transition-colors";
+            copyButton.setAttribute("data-copy-text", codeText);
+
+            copyButton.addEventListener("click", (event) => {
+                copyToClipboard(codeText, event.target as HTMLButtonElement);
+            });
+
+            wrapper.appendChild(copyButton);
+        });
+    };
+
+    document.addEventListener("DOMContentLoaded", addCopyBtn);
+    document.addEventListener("astro:after-swap", () => addCopyBtn());
+    addCopyBtn();
+</script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<!-- <script>
+  document.addEventListener('astro:page-load', () => {
+    console.log('Page loaded, checking styles...');
+    const styles = document.querySelectorAll('link[rel="stylesheet"]');
+    styles.forEach(style => {
+        // @ts-ignore
+      console.log('Style sheet:', style.href, 'loaded:', style.sheet ? 'yes' : 'no');
+    });
+  });
+</script> -->
+
+<!-- Cloudflare Web Analytics with Partytown -->
+
+<script type="text/partytown" data-astro-reload>
+    document.addEventListener("astro:page-load", () => {
+        // Check if analytics is already loaded to prevent duplicate requests
+        if (window._cfBeaconLoadAttempted) return;
+        window._cfBeaconLoadAttempted = true;
+
+        const existingScript = document.querySelector("script[data-cf-beacon]");
+        if (existingScript) {
+            existingScript.remove();
+        }
+
+        const script = document.createElement("script");
+        script.defer = true;
+        script.src = "https://static.cloudflareinsights.com/beacon.min.js";
+        script.dataset.cfBeacon = '{"token": "74da525dc58f4f22ae1922e8e7ca4936"}';
+        document.head.appendChild(script);
+    });
+</script>
+
+<script is:inline>
+    // Only load on initial page load and set flag
+    if (!window._cfBeaconLoadAttempted) {
+        window._cfBeaconLoadAttempted = true;
+        const script = document.createElement("script");
+        script.defer = true;
+        script.src = "https://static.cloudflareinsights.com/beacon.min.js";
+        script.dataset.cfBeacon = '{"token": "74da525dc58f4f22ae1922e8e7ca4936"}';
+        document.head.appendChild(script);
+    }
+</script>
