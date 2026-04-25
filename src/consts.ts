@@ -9,7 +9,8 @@ export const SITE: Site = {
   URL: "https://lakshmanshankar.github.io",
 };
 
-export const SITE_BASE_PATH = "/custom-cms-blog-demo";
+export const SITE_BASE_PATH =
+  process.env.GITHUB_ACTIONS === "true" ? "/custom-cms-blog-demo" : "";
 
 export const HOME: Metadata = {
   TITLE: "Home",

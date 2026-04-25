@@ -4,10 +4,13 @@ import mdx from "@astrojs/mdx";
 import tailwind from "@astrojs/tailwind";
 import AutoImport from "astro-auto-import";
 
+const isGitHubPages = process.env.GITHUB_ACTIONS === "true";
+const base = isGitHubPages ? "/custom-cms-blog-demo" : "/";
+
 // https://astro.build/config
 export default defineConfig({
   site: "https://lakshmanshankar.github.io",
-  base: "/custom-cms-blog-demo",
+  base,
   integrations: [
     AutoImport({
       imports: [
